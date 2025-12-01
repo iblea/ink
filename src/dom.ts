@@ -146,6 +146,11 @@ export const insertBeforeNode = (
 			node.yogaNode?.insertChild(newChildNode.yogaNode, index);
 		}
 
+		// Input first character
+		if (node.nodeName === 'ink-text' || node.nodeName === 'ink-virtual-text') {
+			markNodeAsDirty(node);
+		}
+
 		return;
 	}
 
