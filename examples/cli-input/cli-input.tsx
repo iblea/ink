@@ -5,15 +5,36 @@ function CliInput() {
 	const {exit} = useApp();
 	const [inputText, setInputText] = React.useState('');
 	const [submittedTexts, setSubmittedTexts] = React.useState<string[]>([]);
+	const [cursorPosition, setCursorPosition] = React.useState(0);
+	const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
 	// Use ref to always have the latest inputText value
 	const inputTextRef = React.useRef('');
+	const cursorPositionRef = React.useRef(0);
 
 	React.useEffect(() => {
 		inputTextRef.current = inputText;
-	}, [inputText]);
+		cursorPositionRef.current = cursorPosition;
+	}, [inputText, cursorPosition]);
 
 	useInput((input, key) => {
+
+		// Arrow keys - Move cursor position
+		if (key.leftArrow) {
+			const newPos = Math.max(0, cursorPositionRef.current - 1);
+			setCursorPosition(newPos);
+			cursorPositionRef.current = newPos; // Update ref immediately
+			forceUpdate(); // Force re-render to update terminal cursor
+			return;
+		}
+
+		if (key.rightArrow) {
+			const newPos = Math.min(inputTextRef.current.length, cursorPositionRef.current + 1);
+			setCursorPosition(newPos);
+			cursorPositionRef.current = newPos; // Update ref immediately
+			forceUpdate(); // Force re-render to update terminal cursor
+			return;
+		}
 
 		// Enter - Print input text.
 		if (key.return) {
@@ -31,26 +52,55 @@ function CliInput() {
 			}
 			setInputText('');
 			inputTextRef.current = '';
+			setCursorPosition(0);
+			cursorPositionRef.current = 0;
 			return;
 		}
 
-		// Backspace
-		if (key.backspace || key.delete) {
-			setInputText(prev => {
-				const newText = prev.slice(0, -1);
-				inputTextRef.current = newText;
-				return newText;
-			});
+		// Backspace - Delete character before cursor
+		if (key.backspace) {
+			const pos = cursorPositionRef.current;
+			if (pos > 0) {
+				setInputText(prev => {
+					const newText = prev.slice(0, pos - 1) + prev.slice(pos);
+					inputTextRef.current = newText;
+					return newText;
+				});
+				const newPos = pos - 1;
+				setCursorPosition(newPos);
+				cursorPositionRef.current = newPos; // Update ref immediately
+			}
 			return;
 		}
 
-		// General input
+		// Delete - In most terminals, backspace is detected as delete
+		// So we treat delete as backspace (delete character before cursor)
+		if (key.delete) {
+			const pos = cursorPositionRef.current;
+			if (pos > 0) {
+				setInputText(prev => {
+					const newText = prev.slice(0, pos - 1) + prev.slice(pos);
+					inputTextRef.current = newText;
+					return newText;
+				});
+				const newPos = pos - 1;
+				setCursorPosition(newPos);
+				cursorPositionRef.current = newPos; // Update ref immediately
+			}
+			return;
+		}
+
+		// General input - Insert at cursor position
 		if (!key.ctrl && !key.meta && input) {
+			const pos = cursorPositionRef.current;
 			setInputText(prev => {
-				const newText = prev + input;
+				const newText = prev.slice(0, pos) + input + prev.slice(pos);
 				inputTextRef.current = newText;
 				return newText;
 			});
+			const newPos = pos + input.length;
+			setCursorPosition(newPos);
+			cursorPositionRef.current = newPos; // Update ref immediately
 		}
 	});
 
@@ -63,7 +113,9 @@ function CliInput() {
 				Type something and press Enter. Press 'q' to exit.
 			</Text>
 			<Box marginTop={1}>
-				<Text color="green">&gt; {inputText}█</Text>
+				<Text color="green">
+					&gt; {inputText.slice(0, cursorPosition)}█{inputText.slice(cursorPosition)}
+				</Text>
 			</Box>
 
 			{submittedTexts.length > 0 && (
