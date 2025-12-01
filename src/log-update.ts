@@ -1,6 +1,7 @@
 import {type Writable} from 'node:stream';
 import ansiEscapes from 'ansi-escapes';
 import cliCursor from 'cli-cursor';
+import {findCursorPosition} from './cursor-marker.js';
 
 export type LogUpdate = {
 	clear: () => void;
@@ -11,15 +12,66 @@ export type LogUpdate = {
 
 const createStandard = (
 	stream: Writable,
-	{showCursor = false} = {},
+	{showCursor = false, enableImeCursor = false} = {},
 ): LogUpdate => {
 	let previousLineCount = 0;
 	let previousOutput = '';
 	let hasHiddenCursor = false;
+	let isFirstRender = true;
 
 	const render = (str: string) => {
-		if (!showCursor && !hasHiddenCursor) {
-			cliCursor.hide();
+		// IME 커서 모드가 활성화된 경우
+		if (enableImeCursor) {
+			const cursorPos = findCursorPosition(str);
+
+			// 중요: 출력용 문자열에서는 커서 마커 제거
+			const cleanStr = str.replace(/█/g, '');
+			const cleanOutput = cleanStr + '\n';
+
+			// 라인 수 계산은 원본(커서 마커 포함)으로 해야 정확
+			const originalOutput = str + '\n';
+
+			if (cleanOutput === previousOutput) {
+				return;
+			}
+
+			previousOutput = cleanOutput;
+
+			// 커서 위치 복원 -> 이전 출력 지우기 -> 새 출력 -> 커서 저장 -> 커서 이동
+			const lineCount = originalOutput.split('\n').length;
+			let buffer = '';
+
+			// 첫 렌더링 시 커서 표시
+			if (isFirstRender) {
+				buffer += ansiEscapes.cursorShow;
+				isFirstRender = false;
+			}
+
+			// 이전 출력이 있으면 커서를 복원하고 지우기
+			if (previousLineCount > 0) {
+				buffer += ansiEscapes.cursorRestorePosition;
+				buffer += ansiEscapes.eraseLines(previousLineCount);
+			}
+
+			// 커서 마커가 제거된 깔끔한 출력
+			buffer += cleanOutput;
+			buffer += ansiEscapes.cursorSavePosition;
+
+			// 터미널 커서 위치만 이동 (show/hide 하지 않음!)
+			if (cursorPos) {
+				const moveUp = lineCount - cursorPos.row - 1;
+				buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
+				buffer += ansiEscapes.cursorTo(cursorPos.col);
+			}
+
+			stream.write(buffer);
+			previousLineCount = lineCount;
+			return;
+		}
+
+		// 기존 동작 (커서 숨김) - enableImeCursor 모드에서는 실행하지 않음!
+		if (!showCursor && !hasHiddenCursor && !enableImeCursor) {
+			cliCursor.hide(stream);
 			hasHiddenCursor = true;
 		}
 
@@ -43,8 +95,11 @@ const createStandard = (
 		previousOutput = '';
 		previousLineCount = 0;
 
-		if (!showCursor) {
-			cliCursor.show();
+		if (enableImeCursor) {
+			// IME 커서 모드에서는 원래대로 숨김
+			stream.write(ansiEscapes.cursorHide);
+		} else if (!showCursor) {
+			cliCursor.show(stream);
 			hasHiddenCursor = false;
 		}
 	};
@@ -60,15 +115,96 @@ const createStandard = (
 
 const createIncremental = (
 	stream: Writable,
-	{showCursor = false} = {},
+	{showCursor = false, enableImeCursor = false} = {},
 ): LogUpdate => {
 	let previousLines: string[] = [];
 	let previousOutput = '';
 	let hasHiddenCursor = false;
 
+	// IME 커서 모드: 초기화 시 터미널 커서를 한 번만 켜기
+	if (enableImeCursor) {
+		cliCursor.show(stream);
+	}
+
 	const render = (str: string) => {
-		if (!showCursor && !hasHiddenCursor) {
-			cliCursor.hide();
+		// IME 커서 모드가 활성화된 경우
+		if (enableImeCursor) {
+			const cursorPos = findCursorPosition(str);
+
+			// 중요: 출력용 문자열에서는 커서 마커 제거
+			const cleanStr = str.replace(/█/g, '');
+			const cleanOutput = cleanStr + '\n';
+
+			// 라인 수 계산은 원본(커서 마커 포함)으로
+			const originalOutput = str + '\n';
+
+			if (cleanOutput === previousOutput) {
+				return;
+			}
+
+			const previousCount = previousLines.length;
+			const cleanLines = cleanOutput.split('\n');
+			const originalLines = originalOutput.split('\n');
+			const nextCount = originalLines.length;
+			const visibleCount = nextCount - 1;
+
+			let buffer = '';
+
+			if (cleanOutput === '\n' || previousOutput.length === 0) {
+				// 첫 렌더링
+				buffer += cleanOutput;
+				buffer += ansiEscapes.cursorSavePosition;
+
+				// 터미널 커서 위치만 이동 (show/hide 하지 않음!)
+				if (cursorPos) {
+					const moveUp = visibleCount - cursorPos.row;
+					buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
+					buffer += ansiEscapes.cursorTo(cursorPos.col);
+				}
+
+				stream.write(buffer);
+				previousOutput = cleanOutput;
+				previousLines = cleanLines;
+				return;
+			}
+
+			// 커서 복원 후 증분 렌더링
+			buffer += ansiEscapes.cursorRestorePosition;
+
+			if (nextCount < previousCount) {
+				buffer += ansiEscapes.eraseLines(previousCount - nextCount + 1);
+				buffer += ansiEscapes.cursorUp(visibleCount);
+			} else {
+				buffer += ansiEscapes.cursorUp(previousCount - 1);
+			}
+
+			for (let i = 0; i < visibleCount; i++) {
+				if (cleanLines[i] === previousLines[i]) {
+					buffer += ansiEscapes.cursorNextLine;
+					continue;
+				}
+
+				buffer += ansiEscapes.eraseLine + cleanLines[i] + '\n';
+			}
+
+			buffer += ansiEscapes.cursorSavePosition;
+
+			// 터미널 커서 위치만 이동 (show/hide 하지 않음!)
+			if (cursorPos) {
+				const moveUp = visibleCount - cursorPos.row;
+				buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
+				buffer += ansiEscapes.cursorTo(cursorPos.col);
+			}
+
+			stream.write(buffer);
+			previousOutput = cleanOutput;
+			previousLines = cleanLines;
+			return;
+		}
+
+		// 기존 동작 (커서 숨김) - enableImeCursor 모드에서는 실행하지 않음!
+		if (!showCursor && !hasHiddenCursor && !enableImeCursor) {
+			cliCursor.hide(stream);
 			hasHiddenCursor = true;
 		}
 
@@ -130,8 +266,11 @@ const createIncremental = (
 		previousOutput = '';
 		previousLines = [];
 
-		if (!showCursor) {
-			cliCursor.show();
+		if (enableImeCursor) {
+			// IME 커서 모드에서는 원래대로 숨김
+			cliCursor.hide(stream);
+		} else if (!showCursor) {
+			cliCursor.show(stream);
 			hasHiddenCursor = false;
 		}
 	};
@@ -147,13 +286,13 @@ const createIncremental = (
 
 const create = (
 	stream: Writable,
-	{showCursor = false, incremental = false} = {},
+	{showCursor = false, incremental = false, enableImeCursor = false} = {},
 ): LogUpdate => {
 	if (incremental) {
-		return createIncremental(stream, {showCursor});
+		return createIncremental(stream, {showCursor, enableImeCursor});
 	}
 
-	return createStandard(stream, {showCursor});
+	return createStandard(stream, {showCursor, enableImeCursor});
 };
 
 const logUpdate = {create};

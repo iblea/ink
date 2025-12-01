@@ -22,6 +22,7 @@ type Props = {
 	readonly writeToStderr: (data: string) => void;
 	readonly exitOnCtrlC: boolean;
 	readonly onExit: (error?: Error) => void;
+	readonly enableImeCursor?: boolean;
 };
 
 type State = {
@@ -127,11 +128,18 @@ export default class App extends PureComponent<Props, State> {
 	}
 
 	override componentDidMount() {
-		cliCursor.hide(this.props.stdout);
+		// IME 커서 모드에서는 터미널 커서를 숨기지 않음
+		if (!this.props.enableImeCursor) {
+			cliCursor.hide(this.props.stdout);
+		}
 	}
 
 	override componentWillUnmount() {
-		cliCursor.show(this.props.stdout);
+		// IME 커서 모드가 아닐 때만 커서를 다시 표시
+		// (IME 커서 모드에서는 log-update의 done()에서 처리)
+		if (!this.props.enableImeCursor) {
+			cliCursor.show(this.props.stdout);
+		}
 
 		// ignore calling setRawMode on an handle stdin it cannot be called
 		if (this.isRawModeSupported()) {

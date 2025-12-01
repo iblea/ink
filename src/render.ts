@@ -74,6 +74,16 @@ export type RenderOptions = {
 	@default false
 	*/
 	incrementalRendering?: boolean;
+
+	/**
+	Enable IME cursor synchronization for proper IME (Input Method Editor) support.
+	When enabled, the terminal cursor will be positioned at the rendered cursor marker,
+	allowing IME candidate windows to appear at the correct location.
+	This is especially useful for CJK (Chinese, Japanese, Korean) input.
+
+	@default false
+	*/
+	enableImeCursor?: boolean;
 };
 
 export type Instance = {
@@ -116,6 +126,7 @@ const render = (
 		patchConsole: true,
 		maxFps: 30,
 		incrementalRendering: false,
+		enableImeCursor: false,
 		...getOptions(options),
 	};
 
