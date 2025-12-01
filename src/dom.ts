@@ -146,6 +146,10 @@ export const insertBeforeNode = (
 			node.yogaNode?.insertChild(newChildNode.yogaNode, index);
 		}
 
+		if (node.nodeName === 'ink-text' || node.nodeName === 'ink-virtual-text') {
+			markNodeAsDirty(node);
+		}
+
 		return;
 	}
 
