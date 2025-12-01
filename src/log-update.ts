@@ -1,7 +1,7 @@
 import {type Writable} from 'node:stream';
 import ansiEscapes from 'ansi-escapes';
 import cliCursor from 'cli-cursor';
-import {findCursorPosition} from './cursor-marker.js';
+import {findCursorPosition, CURSOR_MARKER} from './cursor-marker.js';
 
 export type LogUpdate = {
 	clear: () => void;
@@ -25,8 +25,9 @@ const createStandard = (
 			const cursorPos = findCursorPosition(str);
 
 			// 중요: 출력용 문자열에서는 커서 마커 제거
-			const cleanStr = str.replace(/█/g, '');
+			const cleanStr = str.replaceAll(CURSOR_MARKER, '');
 			const cleanOutput = cleanStr + '\n';
+
 
 			// 라인 수 계산은 원본(커서 마커 포함)으로 해야 정확
 			const originalOutput = str + '\n';
@@ -132,7 +133,7 @@ const createIncremental = (
 			const cursorPos = findCursorPosition(str);
 
 			// 중요: 출력용 문자열에서는 커서 마커 제거
-			const cleanStr = str.replace(/█/g, '');
+			const cleanStr = str.replaceAll(CURSOR_MARKER, '');
 			const cleanOutput = cleanStr + '\n';
 
 			// 라인 수 계산은 원본(커서 마커 포함)으로

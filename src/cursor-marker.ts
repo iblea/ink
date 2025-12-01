@@ -1,5 +1,4 @@
 import stringWidth from 'string-width';
-import sliceAnsi from 'slice-ansi';
 
 /**
  * 커서 마커 문자
@@ -25,8 +24,10 @@ export function findCursorPosition(output: string): {row: number; col: number} |
 		const markerIndex = line.indexOf(CURSOR_MARKER);
 
 		if (markerIndex !== -1) {
-			// ANSI 이스케이프 코드를 고려하여 실제 화면상의 열 위치 계산
-			const beforeMarker = sliceAnsi(line, 0, markerIndex);
+			// CURSOR_MARKER를 기준으로 split하여 앞부분만 가져오기
+			// sliceAnsi는 visible character index를 사용하므로 부적절
+			const parts = line.split(CURSOR_MARKER);
+			const beforeMarker = parts[0]!; // markerIndex !== -1이므로 항상 존재
 			const col = stringWidth(beforeMarker);
 
 			return {row, col};
