@@ -20,16 +20,16 @@ const createStandard = (
 	let isFirstRender = true;
 
 	const render = (str: string) => {
-		// IME 커서 모드가 활성화된 경우
+		// When IME cursor mode is enabled
 		if (enableImeCursor) {
 			const cursorPos = findCursorPosition(str);
 
-			// 중요: 출력용 문자열에서는 커서 마커 제거
+			// Important: Remove cursor marker from output string
 			const cleanStr = str.replaceAll(CURSOR_MARKER, '');
 			const cleanOutput = cleanStr + '\n';
 
 
-			// 라인 수 계산은 원본(커서 마커 포함)으로 해야 정확
+			// Line count calculation should use original (including cursor marker) for accuracy
 			const originalOutput = str + '\n';
 
 			if (cleanOutput === previousOutput) {
@@ -38,27 +38,27 @@ const createStandard = (
 
 			previousOutput = cleanOutput;
 
-			// 커서 위치 복원 -> 이전 출력 지우기 -> 새 출력 -> 커서 저장 -> 커서 이동
+			// Restore cursor -> Erase previous output -> New output -> Save cursor -> Move cursor
 			const lineCount = originalOutput.split('\n').length;
 			let buffer = '';
 
-			// 첫 렌더링 시 커서 표시
+			// Show cursor on first render
 			if (isFirstRender) {
 				buffer += ansiEscapes.cursorShow;
 				isFirstRender = false;
 			}
 
-			// 이전 출력이 있으면 커서를 복원하고 지우기
+			// If there is previous output, restore cursor and erase
 			if (previousLineCount > 0) {
 				buffer += ansiEscapes.cursorRestorePosition;
 				buffer += ansiEscapes.eraseLines(previousLineCount);
 			}
 
-			// 커서 마커가 제거된 깔끔한 출력
+			// Clean output with cursor marker removed
 			buffer += cleanOutput;
 			buffer += ansiEscapes.cursorSavePosition;
 
-			// 터미널 커서 위치만 이동 (show/hide 하지 않음!)
+			// Only move terminal cursor position (do not show/hide!)
 			if (cursorPos) {
 				const moveUp = lineCount - cursorPos.row - 1;
 				buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
@@ -70,7 +70,7 @@ const createStandard = (
 			return;
 		}
 
-		// 기존 동작 (커서 숨김) - enableImeCursor 모드에서는 실행하지 않음!
+		// Original behavior (hide cursor) - not executed in enableImeCursor mode!
 		if (!showCursor && !hasHiddenCursor && !enableImeCursor) {
 			cliCursor.hide(stream);
 			hasHiddenCursor = true;
@@ -97,7 +97,7 @@ const createStandard = (
 		previousLineCount = 0;
 
 		if (enableImeCursor) {
-			// IME 커서 모드에서는 원래대로 숨김
+			// In IME cursor mode, hide as original
 			stream.write(ansiEscapes.cursorHide);
 		} else if (!showCursor) {
 			cliCursor.show(stream);
@@ -122,21 +122,21 @@ const createIncremental = (
 	let previousOutput = '';
 	let hasHiddenCursor = false;
 
-	// IME 커서 모드: 초기화 시 터미널 커서를 한 번만 켜기
+	// IME cursor mode: Show terminal cursor once during initialization
 	if (enableImeCursor) {
 		cliCursor.show(stream);
 	}
 
 	const render = (str: string) => {
-		// IME 커서 모드가 활성화된 경우
+		// When IME cursor mode is enabled
 		if (enableImeCursor) {
 			const cursorPos = findCursorPosition(str);
 
-			// 중요: 출력용 문자열에서는 커서 마커 제거
+			// Important: Remove cursor marker from output string
 			const cleanStr = str.replaceAll(CURSOR_MARKER, '');
 			const cleanOutput = cleanStr + '\n';
 
-			// 라인 수 계산은 원본(커서 마커 포함)으로
+			// Line count calculation uses original (including cursor marker)
 			const originalOutput = str + '\n';
 
 			if (cleanOutput === previousOutput) {
@@ -152,11 +152,11 @@ const createIncremental = (
 			let buffer = '';
 
 			if (cleanOutput === '\n' || previousOutput.length === 0) {
-				// 첫 렌더링
+				// First rendering
 				buffer += cleanOutput;
 				buffer += ansiEscapes.cursorSavePosition;
 
-				// 터미널 커서 위치만 이동 (show/hide 하지 않음!)
+				// Only move terminal cursor position (do not show/hide!)
 				if (cursorPos) {
 					const moveUp = visibleCount - cursorPos.row;
 					buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
@@ -169,7 +169,7 @@ const createIncremental = (
 				return;
 			}
 
-			// 커서 복원 후 증분 렌더링
+			// Incremental rendering after cursor restore
 			buffer += ansiEscapes.cursorRestorePosition;
 
 			if (nextCount < previousCount) {
@@ -190,7 +190,7 @@ const createIncremental = (
 
 			buffer += ansiEscapes.cursorSavePosition;
 
-			// 터미널 커서 위치만 이동 (show/hide 하지 않음!)
+			// Only move terminal cursor position (do not show/hide!)
 			if (cursorPos) {
 				const moveUp = visibleCount - cursorPos.row;
 				buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
@@ -203,7 +203,7 @@ const createIncremental = (
 			return;
 		}
 
-		// 기존 동작 (커서 숨김) - enableImeCursor 모드에서는 실행하지 않음!
+		// Original behavior (hide cursor) - not executed in enableImeCursor mode!
 		if (!showCursor && !hasHiddenCursor && !enableImeCursor) {
 			cliCursor.hide(stream);
 			hasHiddenCursor = true;
@@ -268,7 +268,7 @@ const createIncremental = (
 		previousLines = [];
 
 		if (enableImeCursor) {
-			// IME 커서 모드에서는 원래대로 숨김
+			// In IME cursor mode, hide as original
 			cliCursor.hide(stream);
 		} else if (!showCursor) {
 			cliCursor.show(stream);

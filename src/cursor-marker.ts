@@ -1,15 +1,15 @@
 import stringWidth from 'string-width';
 
 /**
- * 커서 마커 문자
- * 렌더링된 출력에서 이 문자를 찾아 커서 위치를 계산합니다.
+ * Cursor marker character
+ * Used to find and calculate cursor position in the rendered output.
  */
 export const CURSOR_MARKER = '█';
 
 /**
- * 렌더링된 출력에서 커서 위치를 찾습니다.
- * @param output 렌더링된 출력 문자열
- * @returns {row, col} 커서의 행과 열 위치 (0-based), 찾지 못하면 null
+ * Finds cursor position in the rendered output.
+ * @param output Rendered output string
+ * @returns {row, col} Row and column position of cursor (0-based), null if not found
  */
 export function findCursorPosition(output: string): {row: number; col: number} | null {
 	const lines = output.split('\n');
@@ -24,10 +24,10 @@ export function findCursorPosition(output: string): {row: number; col: number} |
 		const markerIndex = line.indexOf(CURSOR_MARKER);
 
 		if (markerIndex !== -1) {
-			// CURSOR_MARKER를 기준으로 split하여 앞부분만 가져오기
-			// sliceAnsi는 visible character index를 사용하므로 부적절
+			// Split by CURSOR_MARKER and get only the part before it
+			// sliceAnsi is inappropriate as it uses visible character index
 			const parts = line.split(CURSOR_MARKER);
-			const beforeMarker = parts[0]!; // markerIndex !== -1이므로 항상 존재
+			const beforeMarker = parts[0]!; // Always exists since markerIndex !== -1
 			const col = stringWidth(beforeMarker);
 
 			return {row, col};
@@ -38,9 +38,9 @@ export function findCursorPosition(output: string): {row: number; col: number} |
 }
 
 /**
- * 출력에서 커서 마커를 제거합니다.
- * @param output 렌더링된 출력 문자열
- * @returns 커서 마커가 제거된 출력 문자열
+ * Removes cursor marker from the output.
+ * @param output Rendered output string
+ * @returns Output string with cursor marker removed
  */
 export function removeCursorMarker(output: string): string {
 	return output.replaceAll(CURSOR_MARKER, '');

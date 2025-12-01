@@ -128,15 +128,15 @@ export default class App extends PureComponent<Props, State> {
 	}
 
 	override componentDidMount() {
-		// IME 커서 모드에서는 터미널 커서를 숨기지 않음
+		// Do not hide terminal cursor in IME cursor mode
 		if (!this.props.enableImeCursor) {
 			cliCursor.hide(this.props.stdout);
 		}
 	}
 
 	override componentWillUnmount() {
-		// IME 커서 모드가 아닐 때만 커서를 다시 표시
-		// (IME 커서 모드에서는 log-update의 done()에서 처리)
+		// Show cursor only when not in IME cursor mode
+		// (In IME cursor mode, handled by log-update's done())
 		if (!this.props.enableImeCursor) {
 			cliCursor.show(this.props.stdout);
 		}
