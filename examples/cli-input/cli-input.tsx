@@ -6,26 +6,51 @@ function CliInput() {
 	const [inputText, setInputText] = React.useState('');
 	const [submittedTexts, setSubmittedTexts] = React.useState<string[]>([]);
 
+	// Use ref to always have the latest inputText value
+	const inputTextRef = React.useRef('');
+
+	React.useEffect(() => {
+		inputTextRef.current = inputText;
+	}, [inputText]);
+
 	useInput((input, key) => {
 
 		// Enter - Print input text.
 		if (key.return) {
-			if (inputText.trim() !== '') {
-				setSubmittedTexts(prev => [...prev, inputText]);
-				setInputText('');
+			// IME FIX: If there's input text with return key (e.g., "요" from "요\r"),
+			// "안녕하세요\r(enter)" -> remove "요" ("요" in IME candidate windows), only show "안녕하세".
+			// add it to current text before submitting
+			let finalText = inputTextRef.current;
+			if (input && !input.match(/[\r\n]/)) {
+				finalText = finalText + input;
 			}
+
+			const trimmedText = finalText.trim();
+			if (trimmedText !== '') {
+				setSubmittedTexts(prev => [...prev, trimmedText]);
+			}
+			setInputText('');
+			inputTextRef.current = '';
 			return;
 		}
 
 		// Backspace
 		if (key.backspace || key.delete) {
-			setInputText(prev => prev.slice(0, -1));
+			setInputText(prev => {
+				const newText = prev.slice(0, -1);
+				inputTextRef.current = newText;
+				return newText;
+			});
 			return;
 		}
 
 		// General input
 		if (!key.ctrl && !key.meta && input) {
-			setInputText(prev => prev + input);
+			setInputText(prev => {
+				const newText = prev + input;
+				inputTextRef.current = newText;
+				return newText;
+			});
 		}
 	});
 
