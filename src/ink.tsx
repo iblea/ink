@@ -60,6 +60,7 @@ export default class Ink {
 	private lastOutput: string;
 	private lastOutputHeight: number;
 	private lastTerminalWidth: number;
+	private lastCursorPosition?: {row: number; col: number} | null;
 	private readonly container: FiberRoot;
 	private readonly rootNode: dom.DOMElement;
 	// This variable is used only in debug mode to store full static output
@@ -80,7 +81,7 @@ export default class Ink {
 			options.isScreenReaderEnabled ??
 			process.env['INK_SCREEN_READER'] === 'true';
 
-		const unthrottled = options.debug || this.isScreenReaderEnabled;
+		const unthrottled = options.debug || this.isScreenReaderEnabled || options.enableImeCursor;
 		const maxFps = options.maxFps ?? 30;
 		const renderThrottleMs =
 			maxFps > 0 ? Math.max(1, Math.ceil(1000 / maxFps)) : 0;
@@ -277,8 +278,24 @@ export default class Ink {
 			this.options.stdout.write(
 				ansiEscapes.clearTerminal + this.fullStaticOutput + output,
 			);
+
+			// enableImeCursor mode: position cursor after screen clear
+			if (this.options.enableImeCursor && cursorPosition) {
+				const lineCount = (output).split('\n').length;
+				const moveUp = (lineCount - 1) - cursorPosition.row;
+
+				appendFileSync(logFile, `[INK] Screen overflow: moving cursor to row=${cursorPosition.row}, col=${cursorPosition.col}, lineCount=${lineCount}, moveUp=${moveUp}\n`);
+
+				if (moveUp > 0) {
+					this.options.stdout.write(ansiEscapes.cursorUp(moveUp));
+				}
+				this.options.stdout.write(ansiEscapes.cursorTo(cursorPosition.col));
+				this.options.stdout.write(ansiEscapes.cursorShow);
+			}
+
 			this.lastOutput = output;
 			this.lastOutputHeight = outputHeight;
+			this.lastCursorPosition = cursorPosition;
 			this.log.sync(output, cursorPosition ?? undefined);
 			return;
 		}
@@ -290,13 +307,21 @@ export default class Ink {
 			this.log(output, cursorPosition ?? undefined);
 		}
 
-		if (!hasStaticOutput && output !== this.lastOutput) {
-			appendFileSync(logFile, `[INK] Calling throttledLog with cursorPosition: ${cursorPosition ? `row=${cursorPosition.row}, col=${cursorPosition.col}` : 'undefined'}\n`);
+		const outputChanged = output !== this.lastOutput;
+		const cursorChanged =
+			(cursorPosition !== this.lastCursorPosition) &&
+			(!cursorPosition || !this.lastCursorPosition ||
+			 cursorPosition.row !== this.lastCursorPosition.row ||
+			 cursorPosition.col !== this.lastCursorPosition.col);
+
+		if (!hasStaticOutput && (outputChanged || cursorChanged)) {
+			appendFileSync(logFile, `[INK] Calling throttledLog with cursorPosition: ${cursorPosition ? `row=${cursorPosition.row}, col=${cursorPosition.col}` : 'undefined'}, outputChanged=${outputChanged}, cursorChanged=${cursorChanged}\n`);
 			this.throttledLog(output, cursorPosition ?? undefined);
 		}
 
 		this.lastOutput = output;
 		this.lastOutputHeight = outputHeight;
+		this.lastCursorPosition = cursorPosition;
 	};
 
 	render(node: ReactNode): void {

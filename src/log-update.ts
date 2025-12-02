@@ -26,6 +26,7 @@ const createStandard = (
 	let previousOutput = '';
 	let hasHiddenCursor = false;
 	let isFirstRender = true;
+	let previousCursorPosition: CursorPosition | undefined;
 
 	// IME cursor mode: Show terminal cursor once during initialization
 	if (enableImeCursor) {
@@ -51,28 +52,41 @@ const createStandard = (
 		let buffer = '';
 
 		if (enableImeCursor && cursorPosition) {
-			// Cursor position mode: use save/restore pattern
-			if (isFirstRender) {
-				buffer += ansiEscapes.cursorShow;
-				buffer += output;
-				buffer += ansiEscapes.cursorSavePosition;
-				isFirstRender = false;
-			} else {
-				// Subsequent renders: restore -> erase -> show cursor -> output -> save
-				buffer += ansiEscapes.cursorRestorePosition;
+			// Cursor position mode: erase previous and redraw
+			if (!isFirstRender && previousCursorPosition) {
+				// Cursor is currently at previous target position, move back to output end before erasing
+				const moveDown = previousLineCount - 1 - previousCursorPosition.row;
+				appendFileSync(logFile, `[LOG-UPDATE] Before erase: moving down ${moveDown} lines (previousLineCount=${previousLineCount}, previousCursorRow=${previousCursorPosition.row})\n`);
+				if (moveDown > 0) {
+					buffer += ansiEscapes.cursorDown(moveDown);
+				}
 				buffer += ansiEscapes.eraseLines(previousLineCount);
-				buffer += ansiEscapes.cursorShow;
-				buffer += output;
-				buffer += ansiEscapes.cursorSavePosition;
 			}
 
-			// Move cursor to specified position
-			const moveUp = lineCount - cursorPosition.row - 1;
-			appendFileSync(logFile, `[LOG-UPDATE] moveUp calculation: lineCount=${lineCount}, cursorRow=${cursorPosition.row}, moveUp=${moveUp}, cursorCol=${cursorPosition.col}\n`);
-			buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
-			buffer += ansiEscapes.cursorTo(cursorPosition.col);
-			// Ensure cursor is visible after moving (critical for first render)
 			buffer += ansiEscapes.cursorShow;
+			buffer += output;
+			isFirstRender = false;
+
+			// Move cursor to specified position
+			// After output, cursor is at the end of output (lineCount - 1)
+			// We calculate relative distance within output, regardless of scroll
+			const moveUp = (lineCount - 1) - cursorPosition.row;
+			appendFileSync(logFile, `[LOG-UPDATE] moveUp calculation: lineCount=${lineCount}, cursorRow=${cursorPosition.row}, moveUp=${moveUp}, cursorCol=${cursorPosition.col}\n`);
+
+			if (moveUp > 0) {
+				appendFileSync(logFile, `[LOG-UPDATE] Executing cursorUp(${moveUp})\n`);
+				buffer += ansiEscapes.cursorUp(moveUp);
+			} else {
+				appendFileSync(logFile, `[LOG-UPDATE] Skipping cursorUp (moveUp=${moveUp})\n`);
+			}
+
+			appendFileSync(logFile, `[LOG-UPDATE] Executing cursorTo(${cursorPosition.col})\n`);
+			buffer += ansiEscapes.cursorTo(cursorPosition.col);
+			// Ensure cursor is visible after moving
+			buffer += ansiEscapes.cursorShow;
+
+			// Save cursor position for next render
+			previousCursorPosition = cursorPosition;
 		} else {
 			// Normal mode: erase and redraw
 			buffer = ansiEscapes.eraseLines(previousLineCount) + output;
@@ -84,7 +98,9 @@ const createStandard = (
 		// Log buffer content for debugging
 		appendFileSync(logFile, `[LOG-UPDATE] Buffer content (first 500 chars): ${JSON.stringify(buffer.slice(0, 500))}\n`);
 
+		appendFileSync(logFile, `[LOG-UPDATE] Writing buffer to stream (length=${buffer.length})\n`);
 		stream.write(buffer);
+		appendFileSync(logFile, `[LOG-UPDATE] Buffer written successfully\n`);
 	};
 
 	render.clear = () => {
