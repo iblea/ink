@@ -312,6 +312,7 @@ export default class Ink {
 					writeToStderr={this.writeToStderr}
 					exitOnCtrlC={this.options.exitOnCtrlC}
 					onExit={this.unmount}
+					enableImeCursor={this.options.enableImeCursor}
 				>
 					{node}
 				</App>

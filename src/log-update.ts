@@ -53,7 +53,6 @@ const createStandard = (
 		if (enableImeCursor && cursorPosition) {
 			// Cursor position mode: use save/restore pattern
 			if (isFirstRender) {
-				// First render: show cursor, then output
 				buffer += ansiEscapes.cursorShow;
 				buffer += output;
 				buffer += ansiEscapes.cursorSavePosition;
@@ -72,6 +71,8 @@ const createStandard = (
 			appendFileSync(logFile, `[LOG-UPDATE] moveUp calculation: lineCount=${lineCount}, cursorRow=${cursorPosition.row}, moveUp=${moveUp}, cursorCol=${cursorPosition.col}\n`);
 			buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
 			buffer += ansiEscapes.cursorTo(cursorPosition.col);
+			// Ensure cursor is visible after moving (critical for first render)
+			buffer += ansiEscapes.cursorShow;
 		} else {
 			// Normal mode: erase and redraw
 			buffer = ansiEscapes.eraseLines(previousLineCount) + output;
@@ -79,6 +80,10 @@ const createStandard = (
 
 		previousOutput = output;
 		previousLineCount = lineCount;
+
+		// Log buffer content for debugging
+		appendFileSync(logFile, `[LOG-UPDATE] Buffer content (first 500 chars): ${JSON.stringify(buffer.slice(0, 500))}\n`);
+
 		stream.write(buffer);
 	};
 
@@ -92,10 +97,7 @@ const createStandard = (
 		previousOutput = '';
 		previousLineCount = 0;
 
-		// If IME cursor mode was enabled, hide cursor on exit
-		if (enableImeCursor) {
-			cliCursor.hide(stream);
-		} else if (!showCursor) {
+		if (!showCursor) {
 			cliCursor.show(stream);
 			hasHiddenCursor = false;
 		}
@@ -232,9 +234,7 @@ const createIncremental = (
 		previousLines = [];
 
 		// If IME cursor mode was enabled, hide cursor on exit
-		if (enableImeCursor) {
-			cliCursor.hide(stream);
-		} else if (!showCursor) {
+		if (!showCursor) {
 			cliCursor.show(stream);
 			hasHiddenCursor = false;
 		}
