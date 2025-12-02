@@ -1,6 +1,10 @@
 import {type Writable} from 'node:stream';
 import ansiEscapes from 'ansi-escapes';
 import cliCursor from 'cli-cursor';
+import {appendFileSync} from 'node:fs';
+import {homedir} from 'node:os';
+
+const logFile = `${homedir()}/ink-debug.log`;
 
 export type CursorPosition = {
 	row: number;
@@ -16,22 +20,25 @@ export type LogUpdate = {
 
 const createStandard = (
 	stream: Writable,
-	{showCursor = false} = {},
+	{showCursor = false, enableImeCursor = false} = {},
 ): LogUpdate => {
 	let previousLineCount = 0;
 	let previousOutput = '';
 	let hasHiddenCursor = false;
 	let isFirstRender = true;
 
+	// IME cursor mode: Show terminal cursor once during initialization
+	if (enableImeCursor) {
+		appendFileSync(logFile, `[LOG-UPDATE createStandard] INIT: Calling cliCursor.show(), enableImeCursor=${enableImeCursor}\n`);
+		cliCursor.show(stream);
+	}
+
 	const render = (str: string, cursorPosition?: CursorPosition) => {
-		// When cursor position is provided, show cursor
-		if (cursorPosition) {
-			if (!hasHiddenCursor) {
-				cliCursor.show();
-				hasHiddenCursor = true;
-			}
-		} else if (!showCursor && !hasHiddenCursor) {
-			cliCursor.hide();
+		appendFileSync(logFile, `[LOG-UPDATE createStandard] render called with cursorPosition: ${cursorPosition ? `row=${cursorPosition.row}, col=${cursorPosition.col}` : 'undefined'}, enableImeCursor=${enableImeCursor}\n`);
+
+		// Normal mode: hide cursor if needed (but not in IME cursor mode)
+		if (!enableImeCursor && !showCursor && !hasHiddenCursor) {
+			cliCursor.hide(stream);
 			hasHiddenCursor = true;
 		}
 
@@ -43,23 +50,26 @@ const createStandard = (
 		const lineCount = output.split('\n').length;
 		let buffer = '';
 
-		if (cursorPosition) {
+		if (enableImeCursor && cursorPosition) {
 			// Cursor position mode: use save/restore pattern
 			if (isFirstRender) {
-				// First render: just output and save cursor position
+				// First render: show cursor, then output
+				buffer += ansiEscapes.cursorShow;
 				buffer += output;
 				buffer += ansiEscapes.cursorSavePosition;
 				isFirstRender = false;
 			} else {
-				// Subsequent renders: restore -> erase -> output -> save
+				// Subsequent renders: restore -> erase -> show cursor -> output -> save
 				buffer += ansiEscapes.cursorRestorePosition;
 				buffer += ansiEscapes.eraseLines(previousLineCount);
+				buffer += ansiEscapes.cursorShow;
 				buffer += output;
 				buffer += ansiEscapes.cursorSavePosition;
 			}
 
 			// Move cursor to specified position
 			const moveUp = lineCount - cursorPosition.row - 1;
+			appendFileSync(logFile, `[LOG-UPDATE] moveUp calculation: lineCount=${lineCount}, cursorRow=${cursorPosition.row}, moveUp=${moveUp}, cursorCol=${cursorPosition.col}\n`);
 			buffer += (moveUp > 0 ? ansiEscapes.cursorUp(moveUp) : '');
 			buffer += ansiEscapes.cursorTo(cursorPosition.col);
 		} else {
@@ -82,8 +92,11 @@ const createStandard = (
 		previousOutput = '';
 		previousLineCount = 0;
 
-		if (!showCursor) {
-			cliCursor.show();
+		// If IME cursor mode was enabled, hide cursor on exit
+		if (enableImeCursor) {
+			cliCursor.hide(stream);
+		} else if (!showCursor) {
+			cliCursor.show(stream);
 			hasHiddenCursor = false;
 		}
 	};
@@ -99,21 +112,21 @@ const createStandard = (
 
 const createIncremental = (
 	stream: Writable,
-	{showCursor = false} = {},
+	{showCursor = false, enableImeCursor = false} = {},
 ): LogUpdate => {
 	let previousLines: string[] = [];
 	let previousOutput = '';
 	let hasHiddenCursor = false;
 
+	// IME cursor mode: Show terminal cursor once during initialization
+	if (enableImeCursor) {
+		cliCursor.show(stream);
+	}
+
 	const render = (str: string, cursorPosition?: CursorPosition) => {
-		// When cursor position is provided, show cursor
-		if (cursorPosition) {
-			if (!hasHiddenCursor) {
-				cliCursor.show();
-				hasHiddenCursor = true;
-			}
-		} else if (!showCursor && !hasHiddenCursor) {
-			cliCursor.hide();
+		// Normal mode: hide cursor if needed (but not in IME cursor mode)
+		if (!enableImeCursor && !showCursor && !hasHiddenCursor) {
+			cliCursor.hide(stream);
 			hasHiddenCursor = true;
 		}
 
@@ -127,7 +140,7 @@ const createIncremental = (
 		const nextCount = nextLines.length;
 		const visibleCount = nextCount - 1;
 
-		if (cursorPosition) {
+		if (enableImeCursor && cursorPosition) {
 			// Cursor position mode: use save/restore pattern
 			let buffer = '';
 
@@ -218,8 +231,11 @@ const createIncremental = (
 		previousOutput = '';
 		previousLines = [];
 
-		if (!showCursor) {
-			cliCursor.show();
+		// If IME cursor mode was enabled, hide cursor on exit
+		if (enableImeCursor) {
+			cliCursor.hide(stream);
+		} else if (!showCursor) {
+			cliCursor.show(stream);
 			hasHiddenCursor = false;
 		}
 	};
@@ -235,13 +251,13 @@ const createIncremental = (
 
 const create = (
 	stream: Writable,
-	{showCursor = false, incremental = false} = {},
+	{showCursor = false, incremental = false, enableImeCursor = false} = {},
 ): LogUpdate => {
 	if (incremental) {
-		return createIncremental(stream, {showCursor});
+		return createIncremental(stream, {showCursor, enableImeCursor});
 	}
 
-	return createStandard(stream, {showCursor});
+	return createStandard(stream, {showCursor, enableImeCursor});
 };
 
 const logUpdate = {create};

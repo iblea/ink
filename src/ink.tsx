@@ -10,6 +10,8 @@ import {LegacyRoot} from 'react-reconciler/constants.js';
 import {type FiberRoot} from 'react-reconciler';
 import Yoga from 'yoga-layout';
 import wrapAnsi from 'wrap-ansi';
+import {appendFileSync} from 'node:fs';
+import {homedir} from 'node:os';
 import reconciler from './reconciler.js';
 import render from './renderer.js';
 import * as dom from './dom.js';
@@ -17,6 +19,8 @@ import logUpdate, {type LogUpdate} from './log-update.js';
 import instances from './instances.js';
 import App from './components/App.js';
 import {accessibilityContext as AccessibilityContext} from './components/AccessibilityContext.js';
+
+const logFile = `${homedir()}/ink-debug.log`;
 
 const noop = () => {};
 
@@ -42,6 +46,7 @@ export type Options = {
 	waitUntilExit?: () => Promise<void>;
 	maxFps?: number;
 	incrementalRendering?: boolean;
+	enableImeCursor?: boolean;
 };
 
 export default class Ink {
@@ -90,6 +95,7 @@ export default class Ink {
 		this.rootNode.onImmediateRender = this.onRender;
 		this.log = logUpdate.create(options.stdout, {
 			incremental: options.incrementalRendering,
+			enableImeCursor: options.enableImeCursor,
 		});
 		this.throttledLog = unthrottled
 			? this.log
@@ -285,6 +291,7 @@ export default class Ink {
 		}
 
 		if (!hasStaticOutput && output !== this.lastOutput) {
+			appendFileSync(logFile, `[INK] Calling throttledLog with cursorPosition: ${cursorPosition ? `row=${cursorPosition.row}, col=${cursorPosition.col}` : 'undefined'}\n`);
 			this.throttledLog(output, cursorPosition ?? undefined);
 		}
 

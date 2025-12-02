@@ -3,6 +3,10 @@ import renderNodeToOutput, {
 } from './render-node-to-output.js';
 import Output from './output.js';
 import {type DOMElement} from './dom.js';
+import {appendFileSync} from 'node:fs';
+import {homedir} from 'node:os';
+
+const logFile = `${homedir()}/ink-debug.log`;
 
 type Result = {
 	output: string;
@@ -58,6 +62,8 @@ const renderer = (node: DOMElement, isScreenReaderEnabled: boolean): Result => {
 		}
 
 		const {output: generatedOutput, height: outputHeight, cursorPosition} = output.get();
+
+		appendFileSync(logFile, `[RENDERER] Returning cursorPosition: ${cursorPosition ? `row=${cursorPosition.row}, col=${cursorPosition.col}` : 'null'}\n`);
 
 		return {
 			output: generatedOutput,
