@@ -53,6 +53,7 @@ export default class Output {
 	height: number;
 
 	private readonly operations: Operation[] = [];
+	private cursorTargetPosition: {x: number; y: number; text: string} | null = null;
 
 	constructor(options: Options) {
 		const {width, height} = options;
@@ -65,9 +66,9 @@ export default class Output {
 		x: number,
 		y: number,
 		text: string,
-		options: {transformers: OutputTransformer[]},
+		options: {transformers: OutputTransformer[]; isTerminalCursorFocused?: boolean},
 	): void {
-		const {transformers} = options;
+		const {transformers, isTerminalCursorFocused} = options;
 
 		if (!text) {
 			return;
@@ -80,6 +81,11 @@ export default class Output {
 			text,
 			transformers,
 		});
+
+		// Track cursor target position for terminal cursor synchronization
+		if (isTerminalCursorFocused) {
+			this.cursorTargetPosition = {x, y, text};
+		}
 	}
 
 	clip(clip: Clip) {
@@ -95,7 +101,7 @@ export default class Output {
 		});
 	}
 
-	get(): {output: string; height: number} {
+	get(): {output: string; height: number; cursorPosition?: {row: number; col: number} | null} {
 		// Initialize output array with a specific set of rows, so that margin/padding at the bottom is preserved
 		const output: StyledChar[][] = [];
 
@@ -227,6 +233,25 @@ export default class Output {
 			}
 		}
 
+		// Calculate cursor position from cursor target (if exists)
+		let cursorPosition: {row: number; col: number} | null = null;
+		if (this.cursorTargetPosition) {
+			const {x, y, text} = this.cursorTargetPosition;
+			const textLines = text.split('\n');
+			const lastLineIndex = textLines.length - 1;
+			const lastLine = textLines[lastLineIndex] || '';
+
+			const cursorRow = y + lastLineIndex;
+			const expectedCol = lastLineIndex === 0
+				? x + stringWidth(lastLine)
+				: stringWidth(lastLine);
+
+			cursorPosition = {
+				row: cursorRow,
+				col: expectedCol,
+			};
+		}
+
 		const generatedOutput = output
 			.map(line => {
 				// See https://github.com/vadimdemedes/ink/pull/564#issuecomment-1637022742
@@ -236,9 +261,21 @@ export default class Output {
 			})
 			.join('\n');
 
+		// Adjust cursor position based on actual output (after trimEnd)
+		if (cursorPosition) {
+			const lines = generatedOutput.split('\n');
+			const cursorLine = lines[cursorPosition.row];
+			if (cursorLine !== undefined) {
+				const actualLineWidth = stringWidth(cursorLine);
+				// Cursor should not go beyond the actual trimmed line width
+				cursorPosition.col = Math.min(cursorPosition.col, actualLineWidth);
+			}
+		}
+
 		return {
 			output: generatedOutput,
 			height: output.length,
+			cursorPosition,
 		};
 	}
 }

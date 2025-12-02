@@ -62,6 +62,11 @@ export type Props = {
 	*/
 	readonly wrap?: Styles['textWrap'];
 
+	/**
+	When enabled with `enableImeCursor: true` in render options, the terminal cursor will be positioned at the end of this Text component's content. Useful for input fields where IME (Input Method Editor) cursor synchronization is needed.
+	*/
+	readonly terminalCursorFocus?: boolean;
+
 	readonly children?: ReactNode;
 };
 
@@ -78,6 +83,7 @@ export default function Text({
 	strikethrough = false,
 	inverse = false,
 	wrap = 'wrap',
+	terminalCursorFocus = false,
 	children,
 	'aria-label': ariaLabel,
 	'aria-hidden': ariaHidden = false,
@@ -138,6 +144,7 @@ export default function Text({
 		<ink-text
 			style={{flexGrow: 0, flexShrink: 1, flexDirection: 'row', textWrap: wrap}}
 			internal_transform={transform}
+			internal_terminalCursorFocus={terminalCursorFocus}
 		>
 			{isScreenReaderEnabled && ariaLabel ? ariaLabel : children}
 		</ink-text>

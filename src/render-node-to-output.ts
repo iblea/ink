@@ -151,7 +151,10 @@ const renderNodeToOutput = (
 
 				text = applyPaddingToText(node, text);
 
-				output.write(x, y, text, {transformers: newTransformers});
+				output.write(x, y, text, {
+					transformers: newTransformers,
+					isTerminalCursorFocused: node.internal_terminalCursorFocus,
+				});
 			}
 
 			return;

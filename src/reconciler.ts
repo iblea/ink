@@ -184,6 +184,16 @@ export default createReconciler<
 				continue;
 			}
 
+			if (key === 'internal_terminalCursorFocus') {
+				node.internal_terminalCursorFocus = value as boolean;
+				continue;
+			}
+
+			if (key === 'internal_terminalCursorFocus') {
+				node.internal_terminalCursorFocus = value as boolean;
+				continue;
+			}
+
 			if (key === 'internal_static') {
 				currentRootNode = rootNode;
 				node.internal_static = true;
@@ -275,6 +285,11 @@ export default createReconciler<
 					node.internal_transform = value as OutputTransformer;
 					continue;
 				}
+
+			if (key === 'internal_terminalCursorFocus') {
+				node.internal_terminalCursorFocus = value as boolean;
+				continue;
+			}
 
 				if (key === 'internal_static') {
 					node.internal_static = true;

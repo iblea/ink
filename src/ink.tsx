@@ -194,7 +194,7 @@ export default class Ink {
 		}
 
 		const startTime = performance.now();
-		const {output, outputHeight, staticOutput} = render(
+		const {output, outputHeight, staticOutput, cursorPosition} = render(
 			this.rootNode,
 			this.isScreenReaderEnabled,
 		);
@@ -273,7 +273,7 @@ export default class Ink {
 			);
 			this.lastOutput = output;
 			this.lastOutputHeight = outputHeight;
-			this.log.sync(output);
+			this.log.sync(output, cursorPosition ?? undefined);
 			return;
 		}
 
@@ -281,11 +281,11 @@ export default class Ink {
 		if (hasStaticOutput) {
 			this.log.clear();
 			this.options.stdout.write(staticOutput);
-			this.log(output);
+			this.log(output, cursorPosition ?? undefined);
 		}
 
 		if (!hasStaticOutput && output !== this.lastOutput) {
-			this.throttledLog(output);
+			this.throttledLog(output, cursorPosition ?? undefined);
 		}
 
 		this.lastOutput = output;
