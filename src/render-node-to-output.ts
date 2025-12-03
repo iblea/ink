@@ -1,8 +1,6 @@
 import widestLine from 'widest-line';
 import indentString from 'indent-string';
 import Yoga from 'yoga-layout';
-import {appendFileSync} from 'node:fs';
-import {homedir} from 'node:os';
 import wrapText from './wrap-text.js';
 import getMaxWidth from './get-max-width.js';
 import squashTextNodes from './squash-text-nodes.js';
@@ -10,8 +8,6 @@ import renderBorder from './render-border.js';
 import renderBackground from './render-background.js';
 import {type DOMElement} from './dom.js';
 import type Output from './output.js';
-
-const logFile = `${homedir()}/ink-debug.log`;
 
 // If parent container is `<Box>`, text nodes will be treated as separate nodes in
 // the tree and will have their own coordinates in the layout.
@@ -142,14 +138,6 @@ const renderNodeToOutput = (
 		}
 
 		if (node.nodeName === 'ink-text') {
-			if (node.internal_terminalCursorFocus) {
-				appendFileSync(logFile, `[DEBUG] ink-text node has ${node.childNodes.length} children\n`);
-				node.childNodes.forEach((child, idx) => {
-					const value = child.nodeName === '#text' ? child.nodeValue : 'N/A';
-					appendFileSync(logFile, `[DEBUG]   Child ${idx}: nodeName=${child.nodeName}, value="${value}"\n`);
-				});
-			}
-
 			let text = squashTextNodes(node);
 
 			if (text.length > 0) {
@@ -162,10 +150,6 @@ const renderNodeToOutput = (
 				}
 
 				text = applyPaddingToText(node, text);
-
-				if (node.internal_terminalCursorFocus) {
-					appendFileSync(logFile, `[DEBUG] Text with cursor focus: "${text}" (length=${text.length}), focus=${node.internal_terminalCursorFocus}\n`);
-				}
 
 				output.write(x, y, text, {
 					transformers: newTransformers,

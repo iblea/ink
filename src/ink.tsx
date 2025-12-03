@@ -10,8 +10,6 @@ import {LegacyRoot} from 'react-reconciler/constants.js';
 import {type FiberRoot} from 'react-reconciler';
 import Yoga from 'yoga-layout';
 import wrapAnsi from 'wrap-ansi';
-import {appendFileSync} from 'node:fs';
-import {homedir} from 'node:os';
 import reconciler from './reconciler.js';
 import render from './renderer.js';
 import * as dom from './dom.js';
@@ -19,8 +17,6 @@ import logUpdate, {type LogUpdate} from './log-update.js';
 import instances from './instances.js';
 import App from './components/App.js';
 import {accessibilityContext as AccessibilityContext} from './components/AccessibilityContext.js';
-
-const logFile = `${homedir()}/ink-debug.log`;
 
 const noop = () => {};
 
@@ -284,8 +280,6 @@ export default class Ink {
 				const lineCount = (output).split('\n').length;
 				const moveUp = (lineCount - 1) - cursorPosition.row;
 
-				appendFileSync(logFile, `[INK] Screen overflow: moving cursor to row=${cursorPosition.row}, col=${cursorPosition.col}, lineCount=${lineCount}, moveUp=${moveUp}\n`);
-
 				if (moveUp > 0) {
 					this.options.stdout.write(ansiEscapes.cursorUp(moveUp));
 				}
@@ -315,7 +309,6 @@ export default class Ink {
 			 cursorPosition.col !== this.lastCursorPosition.col);
 
 		if (!hasStaticOutput && (outputChanged || cursorChanged)) {
-			appendFileSync(logFile, `[INK] Calling throttledLog with cursorPosition: ${cursorPosition ? `row=${cursorPosition.row}, col=${cursorPosition.col}` : 'undefined'}, outputChanged=${outputChanged}, cursorChanged=${cursorChanged}\n`);
 			this.throttledLog(output, cursorPosition ?? undefined);
 		}
 

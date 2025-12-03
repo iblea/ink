@@ -16,7 +16,7 @@ function ChatApp() {
 	>([]);
 
 	useInput((character, key) => {
-		// Tab 키로 focus 전환
+		// Switch focus with Tab key
 		if (key.tab) {
 			setActiveField(current => current === 'input' ? 'name' : 'input');
 			return;
@@ -43,14 +43,14 @@ function ChatApp() {
 				setName('');
 			}
 		} else if (key.backspace || key.delete) {
-			// activeField에 따라 입력 처리
+			// Handle input based on activeField
 			if (activeField === 'input') {
 				setInput(currentInput => currentInput.slice(0, -1));
 			} else {
 				setName(currentName => currentName.slice(0, -1));
 			}
 		} else if (character) {
-			// activeField에 따라 입력 처리
+			// Handle input based on activeField
 			if (activeField === 'input') {
 				setInput(currentInput => currentInput + character);
 			} else {

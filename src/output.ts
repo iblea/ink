@@ -1,8 +1,6 @@
 import sliceAnsi from 'slice-ansi';
 import stringWidth from 'string-width';
 import widestLine from 'widest-line';
-import {appendFileSync} from 'node:fs';
-import {homedir} from 'node:os';
 import {
 	type StyledChar,
 	styledCharsFromTokens,
@@ -10,8 +8,6 @@ import {
 	tokenize,
 } from '@alcalzone/ansi-tokenize';
 import {type OutputTransformer} from './render-node-to-output.js';
-
-const logFile = `${homedir()}/ink-debug.log`;
 
 /**
 "Virtual" output class
@@ -88,7 +84,6 @@ export default class Output {
 
 		// Track cursor target position for terminal cursor synchronization
 		if (isTerminalCursorFocused) {
-			appendFileSync(logFile, `[OUTPUT] Setting cursorTargetPosition: x=${x}, y=${y}, text="${text.slice(0, 50)}"\n`);
 			this.cursorTargetPosition = {x, y, text};
 		}
 	}
@@ -255,9 +250,6 @@ export default class Output {
 				row: cursorRow,
 				col: expectedCol,
 			};
-			appendFileSync(logFile, `[OUTPUT] Calculated cursorPosition: row=${cursorRow}, col=${expectedCol}\n`);
-		} else {
-			appendFileSync(logFile, `[OUTPUT] No cursorTargetPosition set\n`);
 		}
 
 		const generatedOutput = output
