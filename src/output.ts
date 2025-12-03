@@ -9,6 +9,14 @@ import {
 } from '@alcalzone/ansi-tokenize';
 import {type OutputTransformer} from './render-node-to-output.js';
 
+type TermCursorFocusInfo = {
+	x: number;
+	y: number;
+	text: string;
+	originalText: string;
+	terminalCursorPosition?: number;
+};
+
 /**
 "Virtual" output class
 
@@ -53,7 +61,7 @@ export default class Output {
 	height: number;
 
 	private readonly operations: Operation[] = [];
-	private cursorTargetPosition: {x: number; y: number; text: string; originalText: string; terminalCursorPosition?: number} | null = null;
+	private cursorFocusInfo: TermCursorFocusInfo | null = null;
 
 	constructor(options: Options) {
 		const {width, height} = options;
@@ -73,7 +81,7 @@ export default class Output {
 		// Track cursor target position for terminal cursor synchronization
 		// This should be set even for empty text (e.g., empty input field with prefix in separate Text)
 		if (isTerminalCursorFocused) {
-			this.cursorTargetPosition = {
+			this.cursorFocusInfo = {
 				x,
 				y,
 				text: text || '',
@@ -243,8 +251,8 @@ export default class Output {
 
 		// Calculate cursor position from cursor target (if exists)
 		let cursorPosition: {row: number; col: number} | null = null;
-		if (this.cursorTargetPosition) {
-			const {x, y, text, originalText, terminalCursorPosition: charIndex} = this.cursorTargetPosition;
+		if (this.cursorFocusInfo) {
+			const {x, y, text, originalText, terminalCursorPosition: charIndex} = this.cursorFocusInfo;
 
 			if (charIndex !== undefined) {
 				// Use character index to calculate cursor position

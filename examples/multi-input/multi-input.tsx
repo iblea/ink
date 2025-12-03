@@ -1,4 +1,5 @@
 import React, {useState, useRef, useEffect, useReducer} from 'react';
+import stringWidth from 'string-width';
 import {render, Text, Box, useInput} from '../../src/index.js';
 
 let messageId = 0;
@@ -227,7 +228,7 @@ function ChatApp() {
 				</Text>
 			</Box>
 			<Box marginTop={1}>
-				<Text terminalCursorFocus={activeField === 'name'} terminalCursorPosition={NAME_PREFIX_STRING.length + nameCursor} color={activeField === 'name' ? 'green' : 'white'}>
+				<Text terminalCursorFocus={activeField === 'name'} terminalCursorPosition={stringWidth(NAME_PREFIX_STRING) + nameCursor} color={activeField === 'name' ? 'green' : 'white'}>
 					{NAME_PREFIX_STRING}{name}
 				</Text>
 			</Box>
