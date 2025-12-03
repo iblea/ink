@@ -189,8 +189,8 @@ export default createReconciler<
 				continue;
 			}
 
-			if (key === 'internal_terminalCursorFocus') {
-				node.internal_terminalCursorFocus = value as boolean;
+			if (key === 'internal_terminalCursorPosition') {
+				node.internal_terminalCursorPosition = value as number;
 				continue;
 			}
 
@@ -288,6 +288,11 @@ export default createReconciler<
 
 			if (key === 'internal_terminalCursorFocus') {
 				node.internal_terminalCursorFocus = value as boolean;
+				continue;
+			}
+
+			if (key === 'internal_terminalCursorPosition') {
+				node.internal_terminalCursorPosition = value as number;
 				continue;
 			}
 

@@ -30,15 +30,38 @@ const createStandard = (
 	}
 
 	const render = (str: string, cursorPosition?: CursorPosition) => {
-
-		// Normal mode: hide cursor if needed (but not in IME cursor mode)
 		if (!enableImeCursor && !showCursor && !hasHiddenCursor) {
 			cliCursor.hide(stream);
 			hasHiddenCursor = true;
 		}
 
 		const output = str + '\n';
+
+		const cursorChanged = enableImeCursor && cursorPosition && previousCursorPosition &&
+			(cursorPosition.row !== previousCursorPosition.row || cursorPosition.col !== previousCursorPosition.col);
+
 		if (output === previousOutput) {
+			// Output is the same, but cursor position may have changed
+			if (cursorChanged) {
+				let buffer = '';
+
+				const colDiff = cursorPosition!.col - previousCursorPosition!.col;
+				if (colDiff > 0) {
+					buffer += ansiEscapes.cursorForward(colDiff);
+				} else if (colDiff < 0) {
+					buffer += ansiEscapes.cursorBackward(-colDiff);
+				}
+
+				const rowDiff = cursorPosition!.row - previousCursorPosition!.row;
+				if (rowDiff > 0) {
+					buffer += ansiEscapes.cursorDown(rowDiff);
+				} else if (rowDiff < 0) {
+					buffer += ansiEscapes.cursorUp(-rowDiff);
+				}
+
+				previousCursorPosition = cursorPosition;
+				stream.write(buffer);
+			}
 			return;
 		}
 
@@ -46,9 +69,7 @@ const createStandard = (
 		let buffer = '';
 
 		if (enableImeCursor && cursorPosition) {
-			// Cursor position mode: erase previous and redraw
 			if (!isFirstRender && previousCursorPosition) {
-				// Cursor is currently at previous target position, move back to output end before erasing
 				const moveDown = previousLineCount - 1 - previousCursorPosition.row;
 				if (moveDown > 0) {
 					buffer += ansiEscapes.cursorDown(moveDown);
@@ -60,9 +81,7 @@ const createStandard = (
 			buffer += output;
 			isFirstRender = false;
 
-			// Move cursor to specified position
-			// After output, cursor is at the end of output (lineCount - 1)
-			// We calculate relative distance within output, regardless of scroll
+			// Calculate relative distance within output, regardless of scroll
 			const moveUp = (lineCount - 1) - cursorPosition.row;
 
 			if (moveUp > 0) {
@@ -70,13 +89,10 @@ const createStandard = (
 			}
 
 			buffer += ansiEscapes.cursorTo(cursorPosition.col);
-			// Ensure cursor is visible after moving
 			buffer += ansiEscapes.cursorShow;
 
-			// Save cursor position for next render
 			previousCursorPosition = cursorPosition;
 		} else {
-			// Normal mode: erase and redraw
 			buffer = ansiEscapes.eraseLines(previousLineCount) + output;
 		}
 
@@ -125,7 +141,6 @@ const createIncremental = (
 	}
 
 	const render = (str: string, cursorPosition?: CursorPosition) => {
-		// Normal mode: hide cursor if needed (but not in IME cursor mode)
 		if (!enableImeCursor && !showCursor && !hasHiddenCursor) {
 			cliCursor.hide(stream);
 			hasHiddenCursor = true;
@@ -142,7 +157,6 @@ const createIncremental = (
 		const visibleCount = nextCount - 1;
 
 		if (enableImeCursor && cursorPosition) {
-			// Cursor position mode: use save/restore pattern
 			let buffer = '';
 
 			if (output === '\n' || previousOutput.length === 0) {
@@ -183,7 +197,6 @@ const createIncremental = (
 			return;
 		}
 
-		// Normal mode (no cursor position)
 		if (output === '\n' || previousOutput.length === 0) {
 			stream.write(ansiEscapes.eraseLines(previousCount) + output);
 			previousOutput = output;
@@ -232,7 +245,6 @@ const createIncremental = (
 		previousOutput = '';
 		previousLines = [];
 
-		// If IME cursor mode was enabled, hide cursor on exit
 		if (!showCursor) {
 			cliCursor.show(stream);
 			hasHiddenCursor = false;

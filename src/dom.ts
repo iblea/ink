@@ -28,6 +28,7 @@ export type DOMElement = {
 	childNodes: DOMNode[];
 	internal_transform?: OutputTransformer;
 	internal_terminalCursorFocus?: boolean;
+	internal_terminalCursorPosition?: number;
 
 	internal_accessibility?: {
 		role?:

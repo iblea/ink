@@ -67,6 +67,11 @@ export type Props = {
 	*/
 	readonly terminalCursorFocus?: boolean;
 
+	/**
+	Specifies the cursor position within the text content (character index). Only works when `terminalCursorFocus` is true. If not specified, the cursor will be positioned at the end of the text (default behavior).
+	*/
+	readonly terminalCursorPosition?: number;
+
 	readonly children?: ReactNode;
 };
 
@@ -84,6 +89,7 @@ export default function Text({
 	inverse = false,
 	wrap = 'wrap',
 	terminalCursorFocus = false,
+	terminalCursorPosition,
 	children,
 	'aria-label': ariaLabel,
 	'aria-hidden': ariaHidden = false,
@@ -145,6 +151,7 @@ export default function Text({
 			style={{flexGrow: 0, flexShrink: 1, flexDirection: 'row', textWrap: wrap}}
 			internal_transform={transform}
 			internal_terminalCursorFocus={terminalCursorFocus}
+			internal_terminalCursorPosition={terminalCursorPosition}
 		>
 			{isScreenReaderEnabled && ariaLabel ? ariaLabel : children}
 		</ink-text>

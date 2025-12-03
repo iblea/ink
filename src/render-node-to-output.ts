@@ -139,6 +139,7 @@ const renderNodeToOutput = (
 
 		if (node.nodeName === 'ink-text') {
 			let text = squashTextNodes(node);
+			const originalText = text; // Save original text before any transformations
 
 			if (text.length > 0) {
 				const currentWidth = widestLine(text);
@@ -154,12 +155,16 @@ const renderNodeToOutput = (
 				output.write(x, y, text, {
 					transformers: newTransformers,
 					isTerminalCursorFocused: node.internal_terminalCursorFocus,
+					terminalCursorPosition: node.internal_terminalCursorPosition,
+					originalText: originalText,
 				});
 			} else if (node.internal_terminalCursorFocus) {
 				// Even for empty text, we need to call write() to set cursor position
 				output.write(x, y, '', {
 					transformers: newTransformers,
 					isTerminalCursorFocused: true,
+					terminalCursorPosition: node.internal_terminalCursorPosition,
+					originalText: '',
 				});
 			}
 
