@@ -70,6 +70,12 @@ export default class Output {
 	): void {
 		const {transformers, isTerminalCursorFocused} = options;
 
+		// Track cursor target position for terminal cursor synchronization
+		// This should be set even for empty text (e.g., empty input field with prefix in separate Text)
+		if (isTerminalCursorFocused) {
+			this.cursorTargetPosition = {x, y, text: text || ''};
+		}
+
 		if (!text) {
 			return;
 		}
@@ -81,11 +87,6 @@ export default class Output {
 			text,
 			transformers,
 		});
-
-		// Track cursor target position for terminal cursor synchronization
-		if (isTerminalCursorFocused) {
-			this.cursorTargetPosition = {x, y, text};
-		}
 	}
 
 	clip(clip: Clip) {

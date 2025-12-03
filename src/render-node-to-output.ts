@@ -155,6 +155,12 @@ const renderNodeToOutput = (
 					transformers: newTransformers,
 					isTerminalCursorFocused: node.internal_terminalCursorFocus,
 				});
+			} else if (node.internal_terminalCursorFocus) {
+				// Even for empty text, we need to call write() to set cursor position
+				output.write(x, y, '', {
+					transformers: newTransformers,
+					isTerminalCursorFocused: true,
+				});
 			}
 
 			return;
