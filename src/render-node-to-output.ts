@@ -273,14 +273,21 @@ const renderNodeToOutput = (
 					lines = [[]];
 				}
 
+				let lineStartOffset = 0;
 				for (const [index, line] of lines.entries()) {
+					const relativePosition =
+						(node.internal_terminalCursorPosition ?? 0) - lineStartOffset;
+
 					output.write(x, y + index, line, {
 						transformers: newTransformers,
 						lineIndex: index,
 						isTerminalCursorFocused:
 							node.internal_terminalCursorFocus && index === cursorLineIndex,
-						terminalCursorPosition: node.internal_terminalCursorPosition ?? 0,
+						terminalCursorPosition: Math.max(0, relativePosition),
 					});
+
+					// Calculate next line's start offset (line length + 1 for '\n')
+					lineStartOffset += line.length + 1;
 				}
 			}
 
